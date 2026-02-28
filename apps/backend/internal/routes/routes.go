@@ -18,6 +18,9 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 	r.Use(middleware.Recovery())
 	r.Use(middleware.OperationLogger(db)) // 操作日志中间件
 
+	// 静态文件服务（上传的文件）
+	r.Static("/uploads", "./uploads")
+
 	// 初始化控制器
 	userCtrl := controllers.NewUserController(db, cfg)
 	roleCtrl := controllers.NewRoleController(db)
@@ -28,6 +31,7 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 	saleCtrl := controllers.NewSaleController(db)
 	borrowCtrl := controllers.NewBorrowController(db, mongoDB)
 	logCtrl := controllers.NewLogController(db)
+	uploadCtrl := controllers.NewUploadController("./uploads")
 
 	// API 路由组
 	api := r.Group("/api")
@@ -127,6 +131,11 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/logs/login-history", logCtrl.GetUserLoginHistory)
 			auth.POST("/logs/dashboard-stats", logCtrl.GetDashboardStats)
 			auth.POST("/logs/clean", logCtrl.CleanOldLogs)
+
+			// 文件上传
+			auth.POST("/upload/image", uploadCtrl.UploadImage)
+			auth.POST("/upload/file", uploadCtrl.UploadFile)
+			auth.POST("/upload/delete", uploadCtrl.DeleteFile)
 		}
 	}
 
