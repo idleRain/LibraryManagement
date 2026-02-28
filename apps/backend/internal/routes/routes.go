@@ -16,6 +16,7 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 	// 全局中间件
 	r.Use(middleware.CORS())
 	r.Use(middleware.Recovery())
+	r.Use(middleware.OperationLogger(db)) // 操作日志中间件
 
 	// 初始化控制器
 	userCtrl := controllers.NewUserController(db, cfg)
@@ -26,6 +27,7 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 	purchaseCtrl := controllers.NewPurchaseController(db)
 	saleCtrl := controllers.NewSaleController(db)
 	borrowCtrl := controllers.NewBorrowController(db, mongoDB)
+	logCtrl := controllers.NewLogController(db)
 
 	// API 路由组
 	api := r.Group("/api")
@@ -117,6 +119,14 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/borrows/admin-stats", borrowCtrl.GetBorrowStats)
 			auth.POST("/borrows/pay-fine", borrowCtrl.PayFine)
 			auth.POST("/borrow-rules/list", borrowCtrl.GetBorrowRules)
+
+			// 操作日志
+			auth.POST("/logs/list", logCtrl.GetOperationLogs)
+			auth.POST("/logs/modules", logCtrl.GetLogModules)
+			auth.POST("/logs/actions", logCtrl.GetLogActions)
+			auth.POST("/logs/login-history", logCtrl.GetUserLoginHistory)
+			auth.POST("/logs/dashboard-stats", logCtrl.GetDashboardStats)
+			auth.POST("/logs/clean", logCtrl.CleanOldLogs)
 		}
 	}
 
