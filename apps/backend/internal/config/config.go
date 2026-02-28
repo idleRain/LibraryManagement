@@ -9,6 +9,7 @@ type Config struct {
 	Server  ServerConfig
 	MySQL   MySQLConfig
 	MongoDB MongoDBConfig
+	Redis   RedisConfig
 	JWT     JWTConfig
 }
 
@@ -27,6 +28,14 @@ type MySQLConfig struct {
 type MongoDBConfig struct {
 	URI      string
 	Database string
+}
+
+type RedisConfig struct {
+	Host     string
+	Port     int
+	Password string
+	DB       int
+	Enabled  bool
 }
 
 type JWTConfig struct {
@@ -50,6 +59,13 @@ func Load() (*Config, error) {
 			URI:      getEnv("MONGODB_URI", "mongodb://localhost:27017"),
 			Database: getEnv("MONGODB_DATABASE", "library_borrow"),
 		},
+		Redis: RedisConfig{
+			Host:     getEnv("REDIS_HOST", "localhost"),
+			Port:     getEnvInt("REDIS_PORT", 6379),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getEnvInt("REDIS_DB", 0),
+			Enabled:  getEnvBool("REDIS_ENABLED", true),
+		},
 		JWT: JWTConfig{
 			Secret: getEnv("JWT_SECRET", "library-system-secret-key"),
 			Expire: getEnvInt("JWT_EXPIRE", 86400),
@@ -70,6 +86,15 @@ func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intVal, err := strconv.Atoi(value); err == nil {
 			return intVal
+		}
+	}
+	return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolVal, err := strconv.ParseBool(value); err == nil {
+			return boolVal
 		}
 	}
 	return defaultValue

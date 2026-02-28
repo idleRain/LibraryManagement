@@ -39,6 +39,8 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 		auth.Use(middleware.JWTAuth(&cfg.JWT))
 		{
 			// 用户管理
+			auth.POST("/logout", userCtrl.Logout)
+			auth.POST("/profile", userCtrl.GetProfile)
 			auth.POST("/users/list", userCtrl.GetUsers)
 			auth.POST("/users/detail", userCtrl.GetUser)
 			auth.POST("/users/create", userCtrl.CreateUser)
@@ -46,6 +48,7 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/users/delete", userCtrl.DeleteUser)
 			auth.POST("/users/assign-roles", userCtrl.AssignRoles)
 			auth.POST("/users/change-password", userCtrl.ChangePassword)
+			auth.POST("/users/reset-password", userCtrl.ResetPassword)
 
 			// 角色管理
 			auth.POST("/roles/list", roleCtrl.GetRoles)
@@ -100,6 +103,8 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/cart/list", saleCtrl.GetCart)
 			auth.POST("/cart/add", saleCtrl.AddToCart)
 			auth.POST("/cart/remove", saleCtrl.RemoveFromCart)
+			auth.POST("/cart/clear", saleCtrl.ClearCart)
+			auth.POST("/cart/update", saleCtrl.UpdateCartQuantity)
 
 			// 借阅管理
 			auth.POST("/borrows/list", borrowCtrl.GetBorrowRecords)
@@ -109,6 +114,9 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/borrows/renew", borrowCtrl.RenewBook)
 			auth.POST("/borrows/overdue", borrowCtrl.GetOverdueRecords)
 			auth.POST("/borrows/stats", borrowCtrl.GetUserBorrowStats)
+			auth.POST("/borrows/admin-stats", borrowCtrl.GetBorrowStats)
+			auth.POST("/borrows/pay-fine", borrowCtrl.PayFine)
+			auth.POST("/borrow-rules/list", borrowCtrl.GetBorrowRules)
 		}
 	}
 
@@ -117,6 +125,7 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 		c.JSON(200, gin.H{
 			"status":  "ok",
 			"message": "Library System API is running",
+			"version": "1.0.0",
 		})
 	})
 

@@ -56,6 +56,24 @@ services:
     networks:
       - library-network
 
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: library-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - library-network
+
   # 后端服务
   backend:
     build:
@@ -73,6 +91,9 @@ services:
       - MYSQL_DATABASE=library_system
       - MONGODB_URI=mongodb://root:mongo123456@mongodb:27017
       - MONGODB_DATABASE=library_borrow
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_ENABLED=true
       - JWT_SECRET=library-system-jwt-secret-key-2024-secure
       - JWT_EXPIRE=86400
       - TZ=Asia/Shanghai
@@ -82,6 +103,8 @@ services:
       mysql:
         condition: service_healthy
       mongodb:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
@@ -108,19 +131,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    networks:
-      - library-network
-
-  # Redis 缓存（可选）
-  redis:
-    image: redis:7-alpine
-    container_name: library-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
     networks:
       - library-network
 

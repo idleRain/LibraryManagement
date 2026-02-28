@@ -9,6 +9,7 @@ import (
 	"github.com/library-system/backend/internal/middleware"
 	"github.com/library-system/backend/internal/models"
 	"github.com/library-system/backend/internal/utils"
+	"github.com/library-system/backend/pkg/database"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -101,6 +102,13 @@ func (uc *UserController) Register(c *gin.Context) {
 		return
 	}
 
+	// 检查邮箱是否存在
+	uc.db.Model(&models.User{}).Where("email = ?", req.Email).Count(&count)
+	if count > 0 {
+		utils.Error(c, 400, "邮箱已被注册")
+		return
+	}
+
 	// 加密密码
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -121,7 +129,40 @@ func (uc *UserController) Register(c *gin.Context) {
 		return
 	}
 
+	// 分配默认角色
+	var defaultRole models.Role
+	if err := uc.db.Where("code = ?", "user").First(&defaultRole).Error; err == nil {
+		uc.db.Model(&user).Association("Roles").Append(&defaultRole)
+	}
+
 	utils.SuccessWithMsg(c, "注册成功", user)
+}
+
+// Logout 用户登出
+func (uc *UserController) Logout(c *gin.Context) {
+	token, exists := c.Get("token")
+	if !exists {
+		utils.SuccessWithMsg(c, "登出成功", nil)
+		return
+	}
+
+	tokenString, ok := token.(string)
+	if !ok {
+		utils.SuccessWithMsg(c, "登出成功", nil)
+		return
+	}
+
+	// 将 token 加入黑名单
+	// 计算剩余有效期
+	claims, err := middleware.ParseToken(tokenString, &uc.cfg.JWT)
+	if err == nil {
+		remainingTime := time.Until(claims.ExpiresAt.Time)
+		if remainingTime > 0 {
+			database.JWTBlacklistAdd(c.Request.Context(), tokenString, remainingTime)
+		}
+	}
+
+	utils.SuccessWithMsg(c, "登出成功", nil)
 }
 
 // GetUsers 获取用户列表
@@ -140,7 +181,7 @@ func (uc *UserController) GetUsers(c *gin.Context) {
 	if req.Page <= 0 {
 		req.Page = 1
 	}
-	if req.PageSize <= 0 {
+	if req.PageSize <= 0 || req.PageSize > 100 {
 		req.PageSize = 10
 	}
 
@@ -176,6 +217,30 @@ func (uc *UserController) GetUser(c *gin.Context) {
 	}
 
 	utils.Success(c, user)
+}
+
+// GetProfile 获取当前用户信息
+func (uc *UserController) GetProfile(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	var user models.User
+	if err := uc.db.Preload("Roles.Permissions").First(&user, userID).Error; err != nil {
+		utils.NotFound(c, "用户不存在")
+		return
+	}
+
+	// 提取权限码
+	var permissions []string
+	for _, role := range user.Roles {
+		for _, perm := range role.Permissions {
+			permissions = append(permissions, perm.Code)
+		}
+	}
+
+	utils.Success(c, gin.H{
+		"user":        user,
+		"permissions": permissions,
+	})
 }
 
 // CreateUser 创建用户
@@ -279,6 +344,13 @@ func (uc *UserController) DeleteUser(c *gin.Context) {
 		return
 	}
 
+	// 不允许删除自己
+	userID := c.GetUint("user_id")
+	if uint(req.ID) == userID {
+		utils.Error(c, 400, "不能删除自己")
+		return
+	}
+
 	if err := uc.db.Delete(&models.User{}, req.ID).Error; err != nil {
 		utils.ServerError(c, "删除失败")
 		return
@@ -346,5 +418,47 @@ func (uc *UserController) ChangePassword(c *gin.Context) {
 
 	uc.db.Model(&user).Update("password", string(hashedPassword))
 
-	utils.SuccessWithMsg(c, "密码修改成功", nil)
+	// 将当前 token 加入黑名单
+	if token, exists := c.Get("token"); exists {
+		if tokenString, ok := token.(string); ok {
+			claims, _ := middleware.ParseToken(tokenString, &uc.cfg.JWT)
+			if claims != nil {
+				remainingTime := time.Until(claims.ExpiresAt.Time)
+				if remainingTime > 0 {
+					database.JWTBlacklistAdd(c.Request.Context(), tokenString, remainingTime)
+				}
+			}
+		}
+	}
+
+	utils.SuccessWithMsg(c, "密码修改成功，请重新登录", nil)
+}
+
+// ResetPassword 重置密码（管理员操作）
+func (uc *UserController) ResetPassword(c *gin.Context) {
+	var req struct {
+		ID       int    `json:"id" binding:"required"`
+		Password string `json:"password" binding:"required,min=6"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "参数错误")
+		return
+	}
+
+	var user models.User
+	if err := uc.db.First(&user, req.ID).Error; err != nil {
+		utils.NotFound(c, "用户不存在")
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		utils.ServerError(c, "密码加密失败")
+		return
+	}
+
+	uc.db.Model(&user).Update("password", string(hashedPassword))
+
+	utils.SuccessWithMsg(c, "密码重置成功", nil)
 }

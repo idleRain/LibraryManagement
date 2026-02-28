@@ -36,6 +36,20 @@ func main() {
 	}
 	defer database.CloseMongoDB()
 
+	// 连接 Redis（可选）
+	if cfg.Redis.Enabled {
+		_, err = database.InitRedis(database.RedisConfig{
+			Host:     cfg.Redis.Host,
+			Port:     cfg.Redis.Port,
+			Password: cfg.Redis.Password,
+			DB:       cfg.Redis.DB,
+		})
+		if err != nil {
+			log.Printf("⚠️  Redis connection failed: %v (continuing without cache)", err)
+		}
+	}
+	defer database.CloseRedis()
+
 	// 设置路由
 	router := routes.SetupRouter(mysqlDB, mongoDB, cfg)
 
