@@ -16,9 +16,9 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 	// 全局中间件
 	r.Use(middleware.CORS())
 	r.Use(middleware.Recovery())
-	r.Use(middleware.OperationLogger(db)) // 操作日志中间件
+	r.Use(middleware.OperationLogger(db))
 
-	// 静态文件服务（上传的文件）
+	// 静态文件服务
 	r.Static("/uploads", "./uploads")
 
 	// 初始化控制器
@@ -33,6 +33,9 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 	logCtrl := controllers.NewLogController(db)
 	uploadCtrl := controllers.NewUploadController("./uploads")
 	exportCtrl := controllers.NewExportController(db)
+	dashboardCtrl := controllers.NewDashboardController(db, mongoDB)
+	batchCtrl := controllers.NewBatchController(db)
+	configCtrl := controllers.NewConfigController(db)
 
 	// API 路由组
 	api := r.Group("/api")
@@ -45,7 +48,18 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 		auth := api.Group("")
 		auth.Use(middleware.JWTAuth(&cfg.JWT))
 		{
-			// 用户管理
+			// ========== 仪表盘 ==========
+			auth.POST("/dashboard/overview", dashboardCtrl.GetOverview)
+			auth.POST("/dashboard/borrow-trend", dashboardCtrl.GetBorrowTrend)
+			auth.POST("/dashboard/sales-trend", dashboardCtrl.GetSalesTrend)
+			auth.POST("/dashboard/category-stats", dashboardCtrl.GetCategoryStats)
+			auth.POST("/dashboard/top-borrowed", dashboardCtrl.GetTopBorrowedBooks)
+			auth.POST("/dashboard/top-sold", dashboardCtrl.GetTopSoldBooks)
+			auth.POST("/dashboard/activities", dashboardCtrl.GetRecentActivities)
+			auth.POST("/dashboard/alerts", dashboardCtrl.GetAlerts)
+			auth.POST("/search", dashboardCtrl.Search)
+
+			// ========== 用户管理 ==========
 			auth.POST("/logout", userCtrl.Logout)
 			auth.POST("/profile", userCtrl.GetProfile)
 			auth.POST("/users/list", userCtrl.GetUsers)
@@ -57,20 +71,18 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/users/change-password", userCtrl.ChangePassword)
 			auth.POST("/users/reset-password", userCtrl.ResetPassword)
 
-			// 角色管理
+			// ========== 角色权限 ==========
 			auth.POST("/roles/list", roleCtrl.GetRoles)
 			auth.POST("/roles/create", roleCtrl.CreateRole)
 			auth.POST("/roles/update", roleCtrl.UpdateRole)
 			auth.POST("/roles/delete", roleCtrl.DeleteRole)
 			auth.POST("/roles/assign-permissions", roleCtrl.AssignPermissions)
-
-			// 权限管理
 			auth.POST("/permissions/list", permCtrl.GetPermissions)
 			auth.POST("/permissions/create", permCtrl.CreatePermission)
 			auth.POST("/permissions/update", permCtrl.UpdatePermission)
 			auth.POST("/permissions/delete", permCtrl.DeletePermission)
 
-			// 图书管理
+			// ========== 图书管理 ==========
 			auth.POST("/books/list", bookCtrl.GetBooks)
 			auth.POST("/books/detail", bookCtrl.GetBook)
 			auth.POST("/books/create", bookCtrl.CreateBook)
@@ -78,7 +90,7 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/books/delete", bookCtrl.DeleteBook)
 			auth.POST("/books/categories", bookCtrl.GetCategories)
 
-			// 库存管理
+			// ========== 库存管理 ==========
 			auth.POST("/stocks/list", stockCtrl.GetStocks)
 			auth.POST("/stocks/detail", stockCtrl.GetStockDetail)
 			auth.POST("/stocks/in", stockCtrl.StockIn)
@@ -86,34 +98,30 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/stocks/records", stockCtrl.GetStockRecords)
 			auth.POST("/stocks/low", stockCtrl.GetLowStock)
 
-			// 供应商管理
+			// ========== 采购管理 ==========
 			auth.POST("/suppliers/list", purchaseCtrl.GetSuppliers)
 			auth.POST("/suppliers/create", purchaseCtrl.CreateSupplier)
 			auth.POST("/suppliers/update", purchaseCtrl.UpdateSupplier)
 			auth.POST("/suppliers/delete", purchaseCtrl.DeleteSupplier)
-
-			// 采购管理
 			auth.POST("/purchases/list", purchaseCtrl.GetPurchaseOrders)
 			auth.POST("/purchases/detail", purchaseCtrl.GetPurchaseOrder)
 			auth.POST("/purchases/create", purchaseCtrl.CreatePurchaseOrder)
 			auth.POST("/purchases/update-status", purchaseCtrl.UpdatePurchaseOrderStatus)
 			auth.POST("/purchases/delete", purchaseCtrl.DeletePurchaseOrder)
 
-			// 销售管理
+			// ========== 销售管理 ==========
 			auth.POST("/sales/list", saleCtrl.GetSaleOrders)
 			auth.POST("/sales/detail", saleCtrl.GetSaleOrder)
 			auth.POST("/sales/create", saleCtrl.CreateSaleOrder)
 			auth.POST("/sales/cancel", saleCtrl.CancelSaleOrder)
 			auth.POST("/sales/stats", saleCtrl.GetSalesStats)
-
-			// 购物车
 			auth.POST("/cart/list", saleCtrl.GetCart)
 			auth.POST("/cart/add", saleCtrl.AddToCart)
 			auth.POST("/cart/remove", saleCtrl.RemoveFromCart)
 			auth.POST("/cart/clear", saleCtrl.ClearCart)
 			auth.POST("/cart/update", saleCtrl.UpdateCartQuantity)
 
-			// 借阅管理
+			// ========== 借阅管理 ==========
 			auth.POST("/borrows/list", borrowCtrl.GetBorrowRecords)
 			auth.POST("/borrows/detail", borrowCtrl.GetBorrowRecord)
 			auth.POST("/borrows/borrow", borrowCtrl.BorrowBook)
@@ -125,7 +133,7 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/borrows/pay-fine", borrowCtrl.PayFine)
 			auth.POST("/borrow-rules/list", borrowCtrl.GetBorrowRules)
 
-			// 操作日志
+			// ========== 操作日志 ==========
 			auth.POST("/logs/list", logCtrl.GetOperationLogs)
 			auth.POST("/logs/modules", logCtrl.GetLogModules)
 			auth.POST("/logs/actions", logCtrl.GetLogActions)
@@ -133,16 +141,36 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/logs/dashboard-stats", logCtrl.GetDashboardStats)
 			auth.POST("/logs/clean", logCtrl.CleanOldLogs)
 
-			// 文件上传
+			// ========== 文件上传 ==========
 			auth.POST("/upload/image", uploadCtrl.UploadImage)
 			auth.POST("/upload/file", uploadCtrl.UploadFile)
 			auth.POST("/upload/delete", uploadCtrl.DeleteFile)
 
-			// 数据导出
+			// ========== 数据导出 ==========
 			auth.POST("/export/books", exportCtrl.ExportBooks)
 			auth.POST("/export/borrows", exportCtrl.ExportBorrows)
 			auth.POST("/export/sales", exportCtrl.ExportSales)
 			auth.POST("/export/users", exportCtrl.ExportUsers)
+
+			// ========== 批量操作 ==========
+			auth.POST("/batch/import-books", batchCtrl.BatchImportBooks)
+			auth.POST("/batch/update-books", batchCtrl.BatchUpdateBooks)
+			auth.POST("/batch/delete-books", batchCtrl.BatchDeleteBooks)
+			auth.POST("/batch/import-users", batchCtrl.BatchImportUsers)
+			auth.POST("/batch/update-users", batchCtrl.BatchUpdateUsers)
+			auth.POST("/batch/stock-in", batchCtrl.BatchStockIn)
+			auth.GET("/batch/template", batchCtrl.DownloadTemplate)
+
+			// ========== 系统配置 ==========
+			auth.POST("/config/list", configCtrl.GetConfigs)
+			auth.POST("/config/get", configCtrl.GetConfig)
+			auth.POST("/config/update", configCtrl.UpdateConfig)
+			auth.POST("/config/batch-update", configCtrl.BatchUpdateConfigs)
+			auth.POST("/config/borrow-rules", configCtrl.GetBorrowRules)
+			auth.POST("/config/update-borrow-rules", configCtrl.UpdateBorrowRules)
+			auth.POST("/config/site-info", configCtrl.GetSiteInfo)
+			auth.POST("/config/update-site-info", configCtrl.UpdateSiteInfo)
+			auth.POST("/config/reset", configCtrl.ResetConfigs)
 		}
 	}
 
@@ -151,7 +179,7 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 		c.JSON(200, gin.H{
 			"status":  "ok",
 			"message": "Library System API is running",
-			"version": "1.0.0",
+			"version": "1.2.0",
 		})
 	})
 
