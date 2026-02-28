@@ -32,6 +32,7 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 	borrowCtrl := controllers.NewBorrowController(db, mongoDB)
 	logCtrl := controllers.NewLogController(db)
 	uploadCtrl := controllers.NewUploadController("./uploads")
+	exportCtrl := controllers.NewExportController(db)
 
 	// API 路由组
 	api := r.Group("/api")
@@ -136,6 +137,12 @@ func SetupRouter(db *gorm.DB, mongoDB *mongo.Database, cfg *config.Config) *gin.
 			auth.POST("/upload/image", uploadCtrl.UploadImage)
 			auth.POST("/upload/file", uploadCtrl.UploadFile)
 			auth.POST("/upload/delete", uploadCtrl.DeleteFile)
+
+			// 数据导出
+			auth.POST("/export/books", exportCtrl.ExportBooks)
+			auth.POST("/export/borrows", exportCtrl.ExportBorrows)
+			auth.POST("/export/sales", exportCtrl.ExportSales)
+			auth.POST("/export/users", exportCtrl.ExportUsers)
 		}
 	}
 
