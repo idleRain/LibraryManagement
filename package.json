@@ -1,0 +1,76 @@
+{
+  "name": "library-management",
+  "version": "1.2.0",
+  "private": true,
+  "description": "A modern library management system with Go backend and SvelteKit frontend",
+  "keywords": [
+    "library",
+    "management",
+    "system",
+    "go",
+    "sveltekit",
+    "monorepo"
+  ],
+  "author": "idleRain <gold.experience@foxmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "dev": "pnpm run --parallel dev:*",
+    "dev:frontend": "pnpm --filter @library/frontend dev",
+    "dev:backend": "make backend-dev",
+    "build": "pnpm run build:frontend && pnpm run build:backend",
+    "build:frontend": "pnpm --filter @library/frontend build",
+    "build:backend": "make backend-build",
+    "start": "pnpm run --parallel start:*",
+    "start:frontend": "pnpm --filter @library/frontend preview",
+    "start:backend": "make backend-start",
+    "lint": "pnpm run lint:frontend && pnpm run lint:backend",
+    "lint:frontend": "pnpm --filter @library/frontend lint",
+    "lint:backend": "make backend-lint",
+    "format": "prettier --write \"**/*.{js,ts,svelte,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,svelte,json,md,yaml,yml}\"",
+    "test": "pnpm run test:frontend && pnpm run test:backend",
+    "test:frontend": "pnpm --filter @library/frontend test",
+    "test:backend": "make backend-test",
+    "clean": "pnpm run clean:frontend && pnpm run clean:backend && rm -rf node_modules",
+    "clean:frontend": "pnpm --filter @library/frontend clean",
+    "clean:backend": "make backend-clean",
+    "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f docker/docker-compose.yml down",
+    "docker:logs": "docker-compose -f docker/docker-compose.yml logs -f",
+    "docker:build": "docker-compose -f docker/docker-compose.yml build",
+    "docker:restart": "docker-compose -f docker/docker-compose.yml restart",
+    "db:init": "bash scripts/db-init.sh",
+    "db:reset": "bash scripts/db-reset.sh",
+    "db:backup": "bash scripts/db-backup.sh",
+    "db:restore": "bash scripts/db-restore.sh",
+    "prepare": "husky",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^18.4.4",
+    "@commitlint/config-conventional": "^18.4.4",
+    "conventional-changelog-cli": "^4.1.0",
+    "husky": "^9.0.7",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.4",
+    "prettier-plugin-svelte": "^3.1.2",
+    "standard-version": "^9.5.0"
+  },
+  "lint-staged": {
+    "*.{js,ts,svelte,json,md,yaml,yml}": [
+      "prettier --write"
+    ],
+    "*.go": [
+      "gofmt -w"
+    ]
+  }
+}
