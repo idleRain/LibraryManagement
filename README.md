@@ -25,6 +25,7 @@
 - 库存变动记录
 - 低库存预警
 - 库存盘点
+- 批量入库
 
 ### 🛒 采购管理
 - 供应商管理
@@ -56,6 +57,14 @@
 - 操作日志
 - 登录历史
 
+### 📊 数据可视化
+- 仪表盘概览
+- 借阅趋势图表
+- 销售趋势图表
+- 分类统计
+- 热门图书排行
+- 预警信息提醒
+
 ### 🔧 系统功能
 - Redis 缓存支持
 - JWT 认证 + 黑名单
@@ -64,6 +73,8 @@
 - 文件上传
 - 数据导出 (Excel)
 - 操作日志记录
+- 系统配置管理
+- 全局搜索
 
 ## 🏗️ 技术架构
 
@@ -210,55 +221,35 @@ pnpm build
 
 所有 API 均使用 **POST** 方法，请求和响应均为 JSON 格式。
 
-### 请求示例
-
-```bash
-# 登录
-curl -X POST http://localhost:8080/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
-
-# 获取图书列表
-curl -X POST http://localhost:8080/api/books/list \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{"page":1,"page_size":10}'
-```
-
-### 响应格式
-
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "list": [...],
-    "total": 100,
-    "page": 1,
-    "page_size": 10
-  }
-}
-```
-
 ### 主要接口
 
-| 接口 | 说明 |
-|------|------|
-| POST /api/login | 用户登录 |
-| POST /api/register | 用户注册 |
-| POST /api/logout | 用户登出 |
-| POST /api/profile | 获取当前用户信息 |
-| POST /api/books/list | 图书列表 |
-| POST /api/books/create | 创建图书 |
-| POST /api/stocks/list | 库存列表 |
-| POST /api/stocks/in | 入库操作 |
-| POST /api/purchases/list | 采购订单 |
-| POST /api/sales/list | 销售订单 |
-| POST /api/borrows/list | 借阅记录 |
-| POST /api/users/list | 用户列表 |
-| POST /api/logs/list | 操作日志 |
-| POST /api/upload/image | 上传图片 |
-| POST /api/export/books | 导出图书 |
+| 模块 | 接口 | 说明 |
+|------|------|------|
+| **仪表盘** | POST /api/dashboard/overview | 概览数据 |
+| | POST /api/dashboard/borrow-trend | 借阅趋势 |
+| | POST /api/dashboard/sales-trend | 销售趋势 |
+| | POST /api/dashboard/alerts | 预警信息 |
+| | POST /api/search | 全局搜索 |
+| **认证** | POST /api/login | 用户登录 |
+| | POST /api/register | 用户注册 |
+| | POST /api/logout | 用户登出 |
+| | POST /api/profile | 获取当前用户 |
+| **图书** | POST /api/books/list | 图书列表 |
+| | POST /api/books/create | 创建图书 |
+| | POST /api/books/update | 更新图书 |
+| | POST /api/books/delete | 删除图书 |
+| **库存** | POST /api/stocks/list | 库存列表 |
+| | POST /api/stocks/in | 入库操作 |
+| | POST /api/stocks/out | 出库操作 |
+| **借阅** | POST /api/borrows/list | 借阅记录 |
+| | POST /api/borrows/borrow | 借阅图书 |
+| | POST /api/borrows/return | 归还图书 |
+| **销售** | POST /api/sales/list | 销售订单 |
+| | POST /api/sales/create | 创建订单 |
+| **批量** | POST /api/batch/import-books | 批量导入图书 |
+| | POST /api/batch/update-books | 批量更新图书 |
+| **配置** | POST /api/config/list | 获取配置 |
+| | POST /api/config/update | 更新配置 |
 
 ## 🔐 默认账户
 
@@ -316,14 +307,19 @@ curl -X POST http://localhost:8080/api/books/list \
 
 ## 🔄 更新日志
 
+### v1.2.0 (2024-02-27)
+- ✨ 添加仪表盘数据可视化（概览、趋势图表、预警信息）
+- ✨ 添加全局搜索功能
+- ✨ 添加批量操作功能（导入、更新、删除）
+- ✨ 添加系统配置管理
+- 🐛 优化性能和错误处理
+
 ### v1.1.0 (2024-02-27)
 - ✨ 实现 Redis 功能（JWT黑名单、缓存、分布式锁、限流器）
 - ✨ 添加操作日志记录功能
 - ✨ 完善前端 API 调用和状态管理
 - ✨ 添加文件上传功能
 - ✨ 添加数据导出功能（Excel）
-- 🐛 修复用户登出后 Token 未失效的问题
-- 💄 优化代码结构和错误处理
 
 ### v1.0.0 (2024-02-27)
 - 🎉 初始版本发布
