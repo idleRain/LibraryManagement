@@ -7,6 +7,7 @@
 ![Svelte](https://img.shields.io/badge/SvelteKit-latest-FF3E00.svg)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1.svg)
 ![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248.svg)
+![Redis](https://img.shields.io/badge/Redis-7.0-DC382D.svg)
 
 ## ✨ 功能特性
 
@@ -16,6 +17,7 @@
 - 分类管理
 - 图书搜索与筛选
 - 批量导入导出
+- 封面图片上传
 
 ### 📦 库存管理
 - 实时库存监控
@@ -37,6 +39,7 @@
 - 多种支付方式
 - 销售统计分析
 - 日/月/年报表
+- 销售数据导出
 
 ### 📕 借阅管理
 - 图书借阅/归还
@@ -44,12 +47,23 @@
 - 逾期管理
 - 罚款计算
 - 借阅统计
+- 借阅规则配置
 
 ### 👥 用户权限
 - 用户管理
 - 角色管理
 - 权限控制 (RBAC)
 - 操作日志
+- 登录历史
+
+### 🔧 系统功能
+- Redis 缓存支持
+- JWT 认证 + 黑名单
+- 分布式锁
+- 限流保护
+- 文件上传
+- 数据导出 (Excel)
+- 操作日志记录
 
 ## 🏗️ 技术架构
 
@@ -71,7 +85,9 @@
 | GORM | latest | ORM 框架 |
 | MySQL | 8.0+ | 主数据库 |
 | MongoDB | 7.0+ | 文档数据库 |
+| Redis | 7.0+ | 缓存数据库 |
 | JWT | - | 认证方案 |
+| excelize | latest | Excel 导出 |
 
 ## 📁 项目结构
 
@@ -146,6 +162,7 @@ docker-compose logs -f
 - pnpm 8+
 - MySQL 8.0+
 - MongoDB 7.0+
+- Redis 7.0+
 
 #### 后端启动
 
@@ -163,6 +180,9 @@ export MYSQL_PASSWORD=your_password
 export MYSQL_DATABASE=library_system
 export MONGODB_URI=mongodb://localhost:27017
 export MONGODB_DATABASE=library_borrow
+export REDIS_HOST=localhost
+export REDIS_PORT=6379
+export REDIS_ENABLED=true
 export JWT_SECRET=your-secret-key
 
 # 运行
@@ -226,6 +246,8 @@ curl -X POST http://localhost:8080/api/books/list \
 |------|------|
 | POST /api/login | 用户登录 |
 | POST /api/register | 用户注册 |
+| POST /api/logout | 用户登出 |
+| POST /api/profile | 获取当前用户信息 |
 | POST /api/books/list | 图书列表 |
 | POST /api/books/create | 创建图书 |
 | POST /api/stocks/list | 库存列表 |
@@ -234,6 +256,9 @@ curl -X POST http://localhost:8080/api/books/list \
 | POST /api/sales/list | 销售订单 |
 | POST /api/borrows/list | 借阅记录 |
 | POST /api/users/list | 用户列表 |
+| POST /api/logs/list | 操作日志 |
+| POST /api/upload/image | 上传图片 |
+| POST /api/export/books | 导出图书 |
 
 ## 🔐 默认账户
 
@@ -255,6 +280,9 @@ curl -X POST http://localhost:8080/api/books/list \
 | MYSQL_DATABASE | MySQL 数据库 | library_system |
 | MONGODB_URI | MongoDB 连接串 | mongodb://localhost:27017 |
 | MONGODB_DATABASE | MongoDB 数据库 | library_borrow |
+| REDIS_HOST | Redis 主机 | localhost |
+| REDIS_PORT | Redis 端口 | 6379 |
+| REDIS_ENABLED | 是否启用 Redis | true |
 | JWT_SECRET | JWT 密钥 | - |
 | JWT_EXPIRE | JWT 过期时间(秒) | 86400 |
 
@@ -286,6 +314,20 @@ curl -X POST http://localhost:8080/api/books/list \
 - `reservations` - 预约记录
 - `borrow_statistics` - 借阅统计
 
+## 🔄 更新日志
+
+### v1.1.0 (2024-02-27)
+- ✨ 实现 Redis 功能（JWT黑名单、缓存、分布式锁、限流器）
+- ✨ 添加操作日志记录功能
+- ✨ 完善前端 API 调用和状态管理
+- ✨ 添加文件上传功能
+- ✨ 添加数据导出功能（Excel）
+- 🐛 修复用户登出后 Token 未失效的问题
+- 💄 优化代码结构和错误处理
+
+### v1.0.0 (2024-02-27)
+- 🎉 初始版本发布
+
 ## 🤝 贡献指南
 
 1. Fork 本仓库
@@ -304,6 +346,7 @@ curl -X POST http://localhost:8080/api/books/list \
 - [shadcn-svelte](https://www.shadcn-svelte.com/)
 - [Gin](https://gin-gonic.com/)
 - [GORM](https://gorm.io/)
+- [excelize](https://github.com/xuri/excelize)
 
 ---
 
