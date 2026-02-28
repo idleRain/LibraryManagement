@@ -1,13 +1,47 @@
-Dockerfile
-.dockerignore
-node_modules
-npm-debug.log
-README.md
-.next
+# Git
 .git
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-test
+.gitignore
+
+# Documentation
+README.md
+LICENSE
+
+# IDE
+.idea
+.vscode
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+.next
+.svelte-kit
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
 *.log
-local-*
+logs
+
+# Uploads
+uploads
+
+# Database
+*.db
+*.sqlite
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.temp
+
+# OS
+.DS_Store
+Thumbs.db

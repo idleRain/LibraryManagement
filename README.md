@@ -103,40 +103,92 @@
 ## 📁 项目结构
 
 ```
-.
+library-management/
 ├── apps/
-│   ├── frontend/                # SvelteKit 前端应用
-│   │   ├── src/
-│   │   │   ├── lib/
-│   │   │   │   ├── api/         # API 客户端
-│   │   │   │   ├── components/  # UI 组件
-│   │   │   │   │   └── ui/      # shadcn-svelte 组件
-│   │   │   │   ├── stores/      # 状态管理
-│   │   │   │   ├── types/       # TypeScript 类型
-│   │   │   │   └── utils/       # 工具函数
-│   │   │   └── routes/          # 页面路由
-│   │   ├── static/              # 静态资源
-│   │   ├── package.json
-│   │   └── ...
-│   └── backend/                 # Go 后端应用
-│       ├── cmd/
-│       │   └── server/          # 入口文件
-│       ├── internal/
-│       │   ├── config/          # 配置管理
-│       │   ├── controllers/     # 控制器
-│       │   ├── middleware/      # 中间件
-│       │   ├── models/          # 数据模型
-│       │   ├── routes/          # 路由配置
-│       │   └── utils/           # 工具函数
-│       ├── pkg/
-│       │   └── database/        # 数据库连接
-│       ├── go.mod
-│       └── ...
+│   ├── backend/                    # Go 后端应用
+│   │   ├── cmd/
+│   │   │   └── server/
+│   │   │       └── main.go         # 入口文件
+│   │   ├── internal/
+│   │   │   ├── config/             # 配置管理
+│   │   │   ├── controllers/        # 控制器
+│   │   │   │   ├── book_controller.go
+│   │   │   │   ├── borrow_controller.go
+│   │   │   │   ├── config_controller.go
+│   │   │   │   ├── dashboard_controller.go
+│   │   │   │   ├── export_controller.go
+│   │   │   │   ├── log_controller.go
+│   │   │   │   ├── permission_controller.go
+│   │   │   │   ├── purchase_controller.go
+│   │   │   │   ├── role_controller.go
+│   │   │   │   ├── sale_controller.go
+│   │   │   │   ├── stock_controller.go
+│   │   │   │   ├── upload_controller.go
+│   │   │   │   └── user_controller.go
+│   │   │   ├── middleware/         # 中间件
+│   │   │   │   ├── auth.go
+│   │   │   │   └── logger.go
+│   │   │   ├── models/             # 数据模型
+│   │   │   │   ├── book.go
+│   │   │   │   ├── borrow.go
+│   │   │   │   ├── order.go
+│   │   │   │   ├── purchase.go
+│   │   │   │   ├── sale.go
+│   │   │   │   └── user.go
+│   │   │   ├── routes/             # 路由配置
+│   │   │   │   └── routes.go
+│   │   │   └── utils/              # 工具函数
+│   │   │       └── response.go
+│   │   ├── pkg/
+│   │   │   └── database/           # 数据库连接
+│   │   │       ├── database.go
+│   │   │       └── redis.go
+│   │   ├── Dockerfile
+│   │   └── go.mod
+│   │
+│   └── frontend/                   # SvelteKit 前端应用
+│       ├── src/
+│       │   ├── lib/
+│       │   │   ├── api/            # API 客户端
+│       │   │   │   └── index.ts
+│       │   │   ├── components/     # UI 组件
+│       │   │   │   ├── common/     # 通用组件
+│       │   │   │   ├── layout/     # 布局组件
+│       │   │   │   └── ui/         # shadcn-svelte 组件
+│       │   │   ├── stores/         # 状态管理
+│       │   │   │   └── index.ts
+│       │   │   ├── types/          # TypeScript 类型
+│       │   │   │   └── index.ts
+│       │   │   └── utils.ts        # 工具函数
+│       │   └── routes/             # 页面路由
+│       │       ├── +layout.svelte
+│       │       ├── +page.svelte
+│       │       ├── auth/           # 认证页面
+│       │       ├── books/          # 图书管理
+│       │       ├── borrows/        # 借阅管理
+│       │       ├── purchases/      # 采购管理
+│       │       ├── roles/          # 角色管理
+│       │       ├── sales/          # 销售管理
+│       │       ├── stocks/         # 库存管理
+│       │       └── users/          # 用户管理
+│       ├── static/                 # 静态资源
+│       ├── Dockerfile
+│       ├── package.json
+│       ├── svelte.config.js
+│       ├── tailwind.config.js
+│       ├── tsconfig.json
+│       └── vite.config.ts
+│
 ├── docker/
-│   ├── docker-compose.yml       # Docker 编排
+│   ├── docker-compose.yml          # Docker 编排
 │   └── init/
-│       ├── mysql/               # MySQL 初始化
-│       └── mongo/               # MongoDB 初始化
+│       ├── mysql/                  # MySQL 初始化
+│       │   └── 01_schema.sql
+│       └── mongo/                  # MongoDB 初始化
+│           └── 01_schema.js
+│
+├── .dockerignore
+├── .gitignore
 └── README.md
 ```
 
@@ -307,11 +359,12 @@ pnpm build
 
 ## 🔄 更新日志
 
-### v1.2.0 (2024-02-27)
+### v1.2.0 (2024-02-28)
 - ✨ 添加仪表盘数据可视化（概览、趋势图表、预警信息）
 - ✨ 添加全局搜索功能
 - ✨ 添加批量操作功能（导入、更新、删除）
 - ✨ 添加系统配置管理
+- 🔧 优化项目结构，清理冗余代码
 - 🐛 优化性能和错误处理
 
 ### v1.1.0 (2024-02-27)
@@ -347,5 +400,5 @@ pnpm build
 ---
 
 <p align="center">
-  Made with ❤️ by Library System Team
+  Made with ❤️ by idleRain
 </p>
