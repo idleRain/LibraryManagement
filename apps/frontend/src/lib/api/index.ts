@@ -20,7 +20,7 @@ export interface PageData<T> {
   page_size: number;
 }
 
-// 用户状态
+// 用户类型
 export interface User {
   id: number;
   username: string;
@@ -46,72 +46,6 @@ export interface Permission {
   code: string;
   resource: string;
   action: string;
-}
-
-// 认证状态
-export interface AuthState {
-  user: User | null;
-  token: string | null;
-  permissions: string[];
-  isAuthenticated: boolean;
-}
-
-// 创建认证状态存储
-export const authStore = writable<AuthState>({
-  user: null,
-  token: null,
-  permissions: [],
-  isAuthenticated: false
-});
-
-// 从 localStorage 恢复认证状态
-export function initAuth() {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-    const permissionsStr = localStorage.getItem('permissions');
-
-    if (token && userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        const permissions = permissionsStr ? JSON.parse(permissionsStr) : [];
-        authStore.set({ user, token, permissions, isAuthenticated: true });
-      } catch {
-        logout();
-      }
-    }
-  }
-}
-
-// 保存认证状态
-export function saveAuth(token: string, user: User, permissions: string[]) {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('permissions', JSON.stringify(permissions));
-  }
-  authStore.set({ user, token, permissions, isAuthenticated: true });
-}
-
-// 清除认证状态
-export function clearAuth() {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('permissions');
-  }
-  authStore.set({ user: null, token: null, permissions: [], isAuthenticated: false });
-}
-
-// 登出
-export async function logout() {
-  try {
-    await api.post('/logout');
-  } catch {
-    // ignore
-  }
-  clearAuth();
-  goto('/auth/login');
 }
 
 // API 请求类
@@ -140,14 +74,14 @@ class ApiClient {
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const data: ApiResponse<T> = await response.json();
 
-    // 处理认证错误
     if (data.code === 401) {
-      clearAuth();
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('permissions');
       goto('/auth/login');
       throw new Error('登录已过期，请重新登录');
     }
 
-    // 处理其他错误
     if (data.code !== 200) {
       throw new Error(data.message || '请求失败');
     }
@@ -171,58 +105,12 @@ class ApiClient {
       throw error;
     }
   }
-
-  // 带进度的文件上传
-  async upload<T = unknown>(path: string, file: File, onProgress?: (percent: number) => void): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      const formData = new FormData();
-      formData.append('file', file);
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable && onProgress) {
-          const percent = Math.round((e.loaded / e.total) * 100);
-          onProgress(percent);
-        }
-      });
-
-      xhr.addEventListener('load', async () => {
-        if (xhr.status === 200) {
-          try {
-            const result = JSON.parse(xhr.responseText);
-            if (result.code === 200) {
-              resolve(result.data);
-            } else {
-              reject(new Error(result.message));
-            }
-          } catch {
-            reject(new Error('解析响应失败'));
-          }
-        } else {
-          reject(new Error('上传失败'));
-        }
-      });
-
-      xhr.addEventListener('error', () => reject(new Error('网络错误')));
-      xhr.addEventListener('abort', () => reject(new Error('上传已取消')));
-
-      xhr.open('POST', `${this.baseUrl}${path}`);
-
-      // 添加认证头
-      const token = localStorage.getItem('token');
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      }
-
-      xhr.send(formData);
-    });
-  }
 }
 
 // 导出 API 客户端实例
 export const api = new ApiClient(API_BASE_URL);
 
-// 便捷方法
+// ========== 认证 API ==========
 export const authApi = {
   login: (username: string, password: string) =>
     api.post<{ token: string; user: User; permissions: string[] }>('/login', { username, password }),
@@ -238,6 +126,39 @@ export const authApi = {
     api.post('/users/change-password', { old_password, new_password }),
 };
 
+// ========== 仪表盘 API ==========
+export const dashboardApi = {
+  overview: () => api.post<{
+    books: { total: number; active: number; inactive: number };
+    users: { total: number; active: number; new_today: number };
+    stocks: { total: number; low_stock: number; out_of_stock: number };
+    borrows: { borrowed: number; overdue: number };
+    sales: { today_orders: number; today_amount: number };
+  }>('/dashboard/overview'),
+
+  borrowTrend: (days = 7) => api.post<{ date: string; count: number }[]>('/dashboard/borrow-trend', { days }),
+
+  salesTrend: (days = 7) => api.post<{ date: string; orders: number; amount: number }[]>('/dashboard/sales-trend', { days }),
+
+  categoryStats: () => api.post<{ category: string; count: number }[]>('/dashboard/category-stats'),
+
+  topBorrowed: (limit = 10) => api.post<{ book_id: number; title: string; count: number }[]>('/dashboard/top-borrowed', { limit }),
+
+  topSold: (limit = 10) => api.post<{ book_id: number; title: string; quantity: number; amount: number }[]>('/dashboard/top-sold', { limit }),
+
+  activities: (limit = 20) => api.post<{ borrows: OperationLog[]; sales: OperationLog[] }>('/dashboard/activities', { limit }),
+
+  alerts: () => api.post<{ type: string; module: string; title: string; message: string; detail: number }[]>('/dashboard/alerts'),
+
+  search: (keyword: string, limit = 5) => api.post<{
+    books: Book[];
+    users: User[];
+    suppliers: Supplier[];
+    borrows: BorrowRecord[];
+  }>('/search', { keyword, limit }),
+};
+
+// ========== 图书 API ==========
 export const bookApi = {
   list: (params: { page?: number; page_size?: number; title?: string; author?: string; category?: string }) =>
     api.post<PageData<Book>>('/books/list', params),
@@ -253,6 +174,7 @@ export const bookApi = {
   categories: () => api.post<string[]>('/books/categories'),
 };
 
+// ========== 库存 API ==========
 export const stockApi = {
   list: (params: { page?: number; page_size?: number; book_title?: string }) =>
     api.post<PageData<Stock>>('/stocks/list', params),
@@ -271,6 +193,7 @@ export const stockApi = {
   low: (threshold?: number) => api.post<Stock[]>('/stocks/low', { threshold }),
 };
 
+// ========== 借阅 API ==========
 export const borrowApi = {
   list: (params: { page?: number; page_size?: number; status?: string; user_id?: number }) =>
     api.post<PageData<BorrowRecord>>('/borrows/list', params),
@@ -289,6 +212,7 @@ export const borrowApi = {
   payFine: (id: string) => api.post('/borrows/pay-fine', { id }),
 };
 
+// ========== 销售 API ==========
 export const saleApi = {
   list: (params: { page?: number; page_size?: number; status?: string; start_date?: string; end_date?: string }) =>
     api.post<PageData<SaleOrder>>('/sales/list', params),
@@ -302,6 +226,7 @@ export const saleApi = {
     api.post<{ total_orders: number; total_amount: number; total_quantity: number }>('/sales/stats', { start_date, end_date }),
 };
 
+// ========== 购物车 API ==========
 export const cartApi = {
   list: () => api.post<Cart[]>('/cart/list'),
 
@@ -314,6 +239,7 @@ export const cartApi = {
   update: (id: number, quantity: number) => api.post('/cart/update', { id, quantity }),
 };
 
+// ========== 日志 API ==========
 export const logApi = {
   list: (params: { page?: number; page_size?: number; user_id?: number; module?: string; action?: string }) =>
     api.post<PageData<OperationLog>>('/logs/list', params),
@@ -331,7 +257,103 @@ export const logApi = {
   }>('/logs/dashboard-stats'),
 };
 
-// 类型定义
+// ========== 批量操作 API ==========
+export const batchApi = {
+  importBooks: async (file: File): Promise<{ imported: number; errors: string[]; total: number }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE_URL}/batch/import-books`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: formData,
+    });
+    
+    const result = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message);
+    }
+    return result.data;
+  },
+
+  updateBooks: (ids: number[], update: Record<string, unknown>) =>
+    api.post<{ updated: number }>('/batch/update-books', { ids, update }),
+
+  deleteBooks: (ids: number[]) =>
+    api.post<{ deleted: number }>('/batch/delete-books', { ids }),
+
+  importUsers: async (file: File): Promise<{ imported: number; errors: string[]; total: number }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE_URL}/batch/import-users`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: formData,
+    });
+    
+    const result = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message);
+    }
+    return result.data;
+  },
+
+  updateUsers: (ids: number[], status: number) =>
+    api.post<{ updated: number }>('/batch/update-users', { ids, status }),
+
+  stockIn: (items: { book_id: number; quantity: number }[], reason?: string) =>
+    api.post<{ success: number; errors: string[]; total: number }>('/batch/stock-in', { items, reason }),
+
+  getTemplateUrl: (type: 'books' | 'users') =>
+    `${API_BASE_URL}/batch/template?type=${type}`,
+};
+
+// ========== 系统配置 API ==========
+export const configApi = {
+  list: () => api.post<Record<string, string>>('/config/list'),
+
+  get: (key: string) => api.post<SystemConfig>('/config/get', { key }),
+
+  update: (key: string, value: string) =>
+    api.post<SystemConfig>('/config/update', { key, value }),
+
+  batchUpdate: (configs: Record<string, string>) =>
+    api.post('/config/batch-update', configs),
+
+  getBorrowRules: () => api.post<{
+    borrow_days: number;
+    max_borrow_books: number;
+    max_renew_times: number;
+    fine_per_day: number;
+  }>('/config/borrow-rules'),
+
+  updateBorrowRules: (rules: {
+    borrow_days?: number;
+    max_borrow_books?: number;
+    max_renew_times?: number;
+    fine_per_day?: number;
+  }) => api.post('/config/update-borrow-rules', rules),
+
+  getSiteInfo: () => api.post<{
+    site_name: string;
+    site_logo: string;
+    site_footer: string;
+    contact_email: string;
+    contact_phone: string;
+  }>('/config/site-info'),
+
+  updateSiteInfo: (info: Record<string, string>) =>
+    api.post('/config/update-site-info', info),
+
+  reset: () => api.post<Record<string, string>>('/config/reset'),
+};
+
+// ========== 类型定义 ==========
 export interface Book {
   id: number;
   isbn: string;
@@ -426,4 +448,23 @@ export interface OperationLog {
   ip?: string;
   content?: string;
   created_at: string;
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  code: string;
+  contact: string;
+  phone: string;
+  email: string;
+  address: string;
+  status: number;
+}
+
+export interface SystemConfig {
+  id: number;
+  config_key: string;
+  config_value: string;
+  config_type: string;
+  description: string;
 }
